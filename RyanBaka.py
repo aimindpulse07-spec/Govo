@@ -73,7 +73,7 @@ async def main():
     
     # 3. Set Bot Commands (Full Menu)
     commands = [
-        ("start", "Talk to Baka"), 
+        ("start", "Talk to Appy"), 
         ("help", "Show admin commands"),
         ("pay", "Buy premium access"), 
         ("daily", "Claim $1000 daily reward"), 
