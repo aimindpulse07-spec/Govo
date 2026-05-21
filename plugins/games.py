@@ -102,7 +102,7 @@ async def check_premium_cmd(client: Client, message: Message):
     
     if not user.get("premium", False):
         return await message.reply_text(
-            "𝐉ᴜʟʟʏ 💗:\n"
+            "𝙈𝙚𝙤𝙬 😻:\n"
             "❌ This command is only for Premium users."
         )
         
