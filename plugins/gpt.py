@@ -8,9 +8,8 @@ from config import GIT_TOKEN
 def _decrypt(data):
     return base64.b64decode(data).decode("utf-8")
 
-_E_URL = "ExNE90QPYtUEOgyRUMTEWGdyb3FYJ3PRQq6nfG6V9SI34MSLbEIC"
-
-_E_CREATOR = "QFdURl9QaGFudG9t"
+_E_URL = "https://api.groq.com/openai/v1/chat/completions"
+_E_CREATOR = "@MrRockytg"
 
 # Encrypted Models List (Groq Multi-Model Fallback)
 _E_MODELS = [
@@ -25,8 +24,8 @@ def ai_groq_engine(text):
         return None
 
     try:
-        target_url = _decrypt(_E_URL)
-        owner_tag = _decrypt(_E_CREATOR)
+        target_url = "https://api.groq.com/openai/v1/chat/completions"
+        owner_tag = "@MrRockytg"
 
         headers = {
             "Content-Type": "application/json",
