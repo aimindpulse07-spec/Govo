@@ -24,6 +24,6 @@ except:
     LOG_CHANNEL_ID = 0
 
 # ----------------- AI & SYSTEM KEYS ----------------- #
-GIT_TOKEN = os.environ.get("GIT_TOKEN", "ExNE90QPYtUEOgyRUMTEWGdyb3FYJ3PRQq6nfG6V9SI34MSLbEIC")
+GIT_TOKEN = os.environ.get("GIT_TOKEN", "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")
 HEROKU_API_KEY = os.environ.get("HEROKU_API_KEY", "")
 HEROKU_APP_NAME = os.environ.get("HEROKU_APP_NAME", "")
