@@ -32,7 +32,7 @@
 <h3 align="center">🚀 Deploy On Heroku</h3>
 
 <p align="center">
-  <a href="https://dashboard.heroku.com/new?template=https://github.com/ixbittu/Govo">
+  <a href="https://dashboard.heroku.com/new?template=https://github.com/rockyxd3/Govo">
     <img src="https://img.shields.io/badge/⚡%20Deploy%20To%20Heroku-purple?style=for-the-badge&logo=heroku" width="250">
   </a>
 </p>
@@ -40,7 +40,7 @@
 <h3 align="center">🌐 Deploy On Render</h3>
 
 <p align="center">
-  <a href="https://render.com/deploy?repo=https://github.com/DevixOP/RyanBakaBot">
+  <a href="https://render.com/deploy?repo=https://github.com/rockyxd3/Govo">
     <img src="https://img.shields.io/badge/🚀%20Deploy%20To%20Render-orange?style=for-the-badge&logo=render" width="250">
   </a>
 </p>
@@ -63,7 +63,7 @@
 
 ```bash
 # Clone Repo
-git clone https://github.com/DevixOP/RyanBakaBot
+git clone https://github.com/rockyxd3/Govo
 cd baka
 
 # Install
