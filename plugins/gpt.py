@@ -79,7 +79,7 @@ async def chat_handler(client, message):
     is_mentioned = message.mentioned
     is_reply = message.reply_to_message and message.reply_to_message.from_user.id == client.me.id
 
-    triggers = ["hi", "hii", "hello", "appy", "baby", "hey", "hlo"]
+    triggers = ["hi", "hii", "hello", "meow", "baby", "hey", "hlo"]
     
     text_lower = message.text.lower().strip()
     
