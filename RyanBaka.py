@@ -73,11 +73,11 @@ async def main():
     
     # 3. Set Bot Commands (Full Menu)
     commands = [
-        ("start", "Talk to Appy"), 
+        ("start", "Talk to Meow"), 
         ("help", "Show admin commands"),
         ("pay", "Buy premium access"), 
         ("daily", "Claim $1000 daily reward"), 
-        ("claim", "Add baka in groups and claim"),
+        ("claim", "Add Meow in groups and claim"),
         ("own", "Make your own sticker pack"), 
         ("open", "Open gaming commands"), 
         ("close", "Close gaming commands"),
