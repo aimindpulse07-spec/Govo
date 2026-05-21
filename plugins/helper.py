@@ -2,8 +2,8 @@
 
 START_TEXT = (
     "✨ 𝐇𝐞𝐲 {mention} ~\n"
-    "𖦹 𝒀𝒐𝒖'𝒓𝒆 𝒕𝒂𝒍𝒌𝒊𝒏𝒈 𝒕𝒐 𝑨𝒑𝒑𝒚, 𝒂 𝒔𝒂𝒔𝒔𝒚 𝒄𝒖𝒕𝒊𝒆 𝒃𝒐𝒕 💕\n\n"
-    "𖥔 Choose an option below:"
+    "𖦹 Yᴏᴜ Aʀᴇ Tᴀʟᴋɪɴɢ Tᴏ ᴍᴇᴏᴡ, A Gᴀᴍɪɴɢ Aɴᴅ Cʜᴀᴛᴛɪɴɢ Gɪʀʟ Hᴀᴠɪɴɢ Lᴏᴛꜱ Oꜰ Fᴇᴀᴛᴜʀᴇꜱ.\n\n"
+    "𖥔 Cʜᴏᴏsᴇ Aɴ Oᴘᴛɪᴏɴ Bᴇʟᴏᴡ :"
 )
 
 HELP_TEXT = (
@@ -25,7 +25,7 @@ HELP_TEXT = (
 )
 
 ECONOMY_TEXT = (
-    "💰 **Baka Economy System Guide**\n\n"
+    "💰 **Meow Economy System Guide**\n\n"
     "🔹 **Normal Users (👤):**\n"
     "/daily, /claim, /bal, /rob, /kill, /revive, /protect, /give\n"
     "/items, /gift, /toprich, /topkill\n\n"
