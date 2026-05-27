@@ -13,9 +13,7 @@ _E_CREATOR = "@MrRockytg"
 
 # Encrypted Models List (Groq Multi-Model Fallback)
 _E_MODELS = [
-    "bGxhbWEtMy4zLTcwYi12ZXJzYXRpbGU=", 
-    "bGxhbWEtMy4xLThiLWluc3RhbnQ=", 
-    "bWl4dHJhbC04eDdiLTMyNzY4"
+    "bGxhbWEtMy4xLThiLWluc3RhbnQ="
 ]
 
 def ai_groq_engine(text):
