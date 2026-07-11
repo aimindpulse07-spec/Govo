@@ -27,9 +27,9 @@ async def start_cmd(client: Client, message: Message):
     # Buttons
     buttons = InlineKeyboardMarkup([
         [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙉𝙤𝙫𝙖 💬", callback_data="talk_info")],
-        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/+oL9HctF7LUA4NDRk"),
+        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/LoveDoseGroup"),
          InlineKeyboardButton("✨ 𝙂𝙖𝙢𝙚 🎮", callback_data="games_info")],
-        [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/its_meowBot?startgroup=true")]
+        [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/itzNova_bot?startgroup=true")]
     ])
     
     if START_IMG:
