@@ -4,7 +4,7 @@ from pyrogram.enums import ChatType
 # Import Texts
 from plugins.helper import START_TEXT, HELP_TEXT
 # Import Config
-from config import BOT_USERNAME, LOG_CHANNEL_ID
+from config import BOT_USERNAME, LOG_CHANNEL_ID, START_IMG
 
 # --- START COMMAND ---
 @Client.on_message(filters.command("start"))
@@ -32,6 +32,13 @@ async def start_cmd(client: Client, message: Message):
         [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/its_meowBot?startgroup=true")]
     ])
     
+    if START_IMG:
+        try:
+            await message.reply_photo(photo=START_IMG, caption=txt, reply_markup=buttons)
+            return
+        except Exception as e:
+            print(f"⚠️ START_IMG failed, falling back to text: {e}")
+
     await message.reply_text(text=txt, reply_markup=buttons)
 
 # --- HELP COMMAND ---
