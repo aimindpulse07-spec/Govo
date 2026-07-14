@@ -27,7 +27,7 @@ async def start_cmd(client: Client, message: Message):
     # Buttons
     buttons = InlineKeyboardMarkup([
         [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙉𝙤𝙫𝙖 💬", callback_data="talk_info")],
-        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/AuroSupport"),
+        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/LoveDoseGroup"),
          InlineKeyboardButton("✨ 𝙂𝙖𝙢𝙚 🎮", callback_data="games_info")],
         [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/itzNova_bot?startgroup=true")]
     ])
@@ -58,7 +58,22 @@ async def bot_added_to_group(client: Client, message: Message):
 
     added_by = message.from_user.mention if message.from_user else "Unknown"
 
-    # 1. Send Welcome Message in the Group
+    # 0. Try to get the group's invite link (needed for both welcome + logger)
+    group_link = None
+    try:
+        if message.chat.username:
+            # Public group -> direct t.me link, no admin rights needed
+            group_link = f"https://t.me/{message.chat.username}"
+        elif message.chat.invite_link:
+            group_link = message.chat.invite_link
+        else:
+            # Bot needs "Invite Users" admin permission for this to work
+            group_link = await client.export_chat_invite_link(message.chat.id)
+    except Exception as e:
+        print(f"⚠️ Could not fetch group invite link: {e}")
+        group_link = None
+
+    # 1. Send Welcome Message in the Group (with image)
     try:
         welcome_text = (
             f"👋 **Hello everyone!**\n"
@@ -68,20 +83,29 @@ async def bot_added_to_group(client: Client, message: Message):
         buttons = InlineKeyboardMarkup([
             [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzNova_bot?startgroup=true")]
         ])
-        await message.reply_text(text=welcome_text, reply_markup=buttons)
+        if START_IMG:
+            try:
+                await message.reply_photo(photo=START_IMG, caption=welcome_text, reply_markup=buttons)
+            except Exception as e:
+                print(f"⚠️ START_IMG failed in welcome message, falling back to text: {e}")
+                await message.reply_text(text=welcome_text, reply_markup=buttons)
+        else:
+            await message.reply_text(text=welcome_text, reply_markup=buttons)
     except Exception as e:
         print(f"⚠️ Failed to send group welcome message: {e}")
 
-    # 2. Send Log to Logger Channel
+    # 2. Send Log to Logger Channel (with group link)
     if LOG_CHANNEL_ID:
         try:
+            link_line = f"🔗 **Group Link:** {group_link}\n" if group_link else "🔗 **Group Link:** Not available (private / no permission)\n"
             log_msg = (
                 f"➕ **Bot Added to a New Group**\n"
                 f"📛 **Group:** {message.chat.title}\n"
                 f"🆔 **Group ID:** `{message.chat.id}`\n"
+                f"{link_line}"
                 f"👤 **Added By:** {added_by}"
             )
-            await client.send_message(LOG_CHANNEL_ID, log_msg)
+            await client.send_message(LOG_CHANNEL_ID, log_msg, disable_web_page_preview=True)
         except Exception as e:
             print(f"⚠️ Failed to send group-add log: {e}")
 
