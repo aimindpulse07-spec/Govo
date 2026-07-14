@@ -27,7 +27,7 @@ async def start_cmd(client: Client, message: Message):
     # Buttons
     buttons = InlineKeyboardMarkup([
         [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙉𝙤𝙫𝙖 💬", callback_data="talk_info")],
-        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/LoveDoseGroup"),
+        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/AuroSupport"),
          InlineKeyboardButton("✨ 𝙂𝙖𝙢𝙚 🎮", callback_data="games_info")],
         [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/itzNova_bot?startgroup=true")]
     ])
@@ -45,6 +45,69 @@ async def start_cmd(client: Client, message: Message):
 @Client.on_message(filters.command("help"))
 async def help_cmd(client: Client, message: Message):
     await message.reply_text(HELP_TEXT)
+
+# --- BOT ADDED TO GROUP (Welcome + Logger) ---
+@Client.on_message(filters.new_chat_members)
+async def bot_added_to_group(client: Client, message: Message):
+    me = await client.get_me()
+
+    # Check if the bot itself is among the new members
+    is_bot_added = any(member.id == me.id for member in message.new_chat_members)
+    if not is_bot_added:
+        return  # Some other user joined, not the bot — ignore
+
+    added_by = message.from_user.mention if message.from_user else "Unknown"
+
+    # 1. Send Welcome Message in the Group
+    try:
+        welcome_text = (
+            f"👋 **Hello everyone!**\n"
+            f"Thanks **{added_by}** for adding me to **{message.chat.title}** 💖\n\n"
+            f"Use /help to see what I can do!"
+        )
+        buttons = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzNova_bot?startgroup=true")]
+        ])
+        await message.reply_text(text=welcome_text, reply_markup=buttons)
+    except Exception as e:
+        print(f"⚠️ Failed to send group welcome message: {e}")
+
+    # 2. Send Log to Logger Channel
+    if LOG_CHANNEL_ID:
+        try:
+            log_msg = (
+                f"➕ **Bot Added to a New Group**\n"
+                f"📛 **Group:** {message.chat.title}\n"
+                f"🆔 **Group ID:** `{message.chat.id}`\n"
+                f"👤 **Added By:** {added_by}"
+            )
+            await client.send_message(LOG_CHANNEL_ID, log_msg)
+        except Exception as e:
+            print(f"⚠️ Failed to send group-add log: {e}")
+
+
+# --- BOT REMOVED FROM GROUP (Logger) ---
+@Client.on_message(filters.left_chat_member)
+async def bot_removed_from_group(client: Client, message: Message):
+    me = await client.get_me()
+
+    if not message.left_chat_member or message.left_chat_member.id != me.id:
+        return  # Some other user left, not the bot — ignore
+
+    removed_by = message.from_user.mention if message.from_user else "Unknown"
+
+    if LOG_CHANNEL_ID:
+        try:
+            log_msg = (
+                f"➖ **Bot Removed from a Group**\n"
+                f"📛 **Group:** {message.chat.title}\n"
+                f"🆔 **Group ID:** `{message.chat.id}`\n"
+                f"👤 **Removed By:** {removed_by}"
+            )
+            await client.send_message(LOG_CHANNEL_ID, log_msg)
+        except Exception as e:
+            print(f"⚠️ Failed to send group-remove log: {e}")
+
 
 # --- ID COMMAND ---
 @Client.on_message(filters.command("id"))
