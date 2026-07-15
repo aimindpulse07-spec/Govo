@@ -1,5 +1,7 @@
 import time
 import random
+import asyncio
+import requests
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
 from pyrogram import Client, filters
@@ -24,6 +26,20 @@ chats_col = db.chats
 
 # --- TRANSLATOR INIT ---
 trans = Translator()
+
+# --- ANIME REACTION GIF API (free, no key needed) ---
+REACTION_GIF_API = "https://api.otakugifs.xyz/gif?reaction={}"
+
+def _fetch_reaction_gif_sync(reaction: str):
+    """Blocking call, run in a thread. Returns a gif URL or None on failure."""
+    try:
+        r = requests.get(REACTION_GIF_API.format(reaction), timeout=10)
+        r.raise_for_status()
+        return r.json().get("url")
+    except Exception as e:
+        print(f"⚠️ Failed to fetch reaction gif for '{reaction}': {e}")
+        return None
+
 
 # --- ITEM SHOP DATA ---
 SHOP_ITEMS = {
@@ -496,7 +512,21 @@ async def actions(client: Client, message: Message):
     if not message.reply_to_message: return await message.reply_text("Reply to someone!")
     act = message.command[0]
     emojis = {"slap": "👋", "punch": "👊", "bite": "🦷", "kiss": "💋", "hug": "🤗"}
-    await message.reply_text(f"{message.from_user.mention} **{act}ed** {message.reply_to_message.from_user.mention} {emojis.get(act, '')}!")
+    caption = f"{message.from_user.mention} **{act}ed** {message.reply_to_message.from_user.mention} {emojis.get(act, '')}!"
+
+    # Fetch a matching anime reaction GIF (non-blocking)
+    loop = asyncio.get_running_loop()
+    gif_url = await loop.run_in_executor(None, _fetch_reaction_gif_sync, act)
+
+    if gif_url:
+        try:
+            await message.reply_animation(animation=gif_url, caption=caption)
+            return
+        except Exception as e:
+            print(f"⚠️ Failed to send action gif, falling back to text: {e}")
+
+    # Fallback: text-only if the gif fetch/send failed
+    await message.reply_text(caption)
 
 @Client.on_message(filters.command(["truth", "dare", "puzzle"]))
 async def t_d_p(client: Client, message: Message):
