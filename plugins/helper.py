@@ -24,8 +24,14 @@ HELP_TEXT = (
     "`.help` - Show this help"
 )
 
+TALK_TEXT = (
+    "💬 **How to talk to me:**\n\n"
+    "Just send me a message in PM, or tag me in a group!\n"
+    "Example: `Nova how are you?`"
+)
+
 ECONOMY_TEXT = (
-    "💰 **Meow Economy System Guide**\n\n"
+    "💰 **Nova Economy System Guide**\n\n"
     "🔹 **Normal Users (👤):**\n"
     "/daily, /claim, /bal, /rob, /kill, /revive, /protect, /give\n"
     "/items, /gift, /toprich, /topkill\n\n"
