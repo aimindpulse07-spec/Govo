@@ -19,10 +19,10 @@ def build_start_text(user: User) -> str:
 
 def build_start_buttons() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙉𝙤𝙫𝙖 💬", callback_data="talk_info")],
-        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/LoveDoseGroup"),
+        [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙈𝙚𝙤𝙬 💬", callback_data="talk_info")],
+        [InlineKeyboardButton("✨ 𝙂𝙧𝙤𝙪𝙥 🧸", url="https://t.me/LoveDoseGroup"),
          InlineKeyboardButton("✨ 𝙂𝙖𝙢𝙚 🎮", callback_data="games_info")],
-        [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/itzNova_bot?startgroup=true")]
+        [InlineKeyboardButton("➕ 𝘼𝙙𝙙 𝙢𝙚 𝙩𝙤 𝙮𝙤𝙪𝙧 𝙜𝙧𝙤𝙪𝙥 👥", url=f"https://t.me/itzMeow_bot?startgroup=true")]
     ])
 
 
@@ -95,7 +95,7 @@ async def bot_added_to_group(client: Client, message: Message):
         f"Use /help to see what I can do!"
     )
     buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzNova_bot?startgroup=true")]
+        [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzMeow_bot?startgroup=true")]
     ])
 
     async def send_welcome():
