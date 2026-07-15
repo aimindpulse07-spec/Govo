@@ -8,7 +8,11 @@ from pyrogram.types import Message
 from googletrans import Translator
 
 # IMPORT CONFIG
-from config import MONGO_URL
+from config import (
+    MONGO_URL, DAILY_BONUS, REVIVE_COST, PROTECT_1D_COST, PROTECT_2D_COST,
+    AUTO_REVIVE_HOURS, KILL_LIMIT_DAILY, ROB_LIMIT_DAILY, ROB_MAX_AMOUNT,
+    KILL_SPAM_COOLDOWN
+)
 # IMPORT HELPER TEXTS
 from plugins.helper import ECONOMY_TEXT, GAME_OPEN_TEXT, GAME_CLOSE_TEXT
 
@@ -54,13 +58,27 @@ async def get_user(user_id, name="User"):
             "last_daily": 0, 
             "protected_until": 0,
             "items": {},
-            "name_history": []
+            "name_history": [],
+            "kills_today": 0,
+            "robs_today": 0,
+            "last_limit_reset": now,
+            "last_kill_time": 0
         }
         await users_col.insert_one(user)
-    
-    # 1. AUTO-REVIVE LOGIC (6 Hours = 21600 seconds)
+
+    # 0. RESET DAILY KILL/ROB LIMITS (every 24h)
+    if now - user.get('last_limit_reset', 0) > 86400:
+        await users_col.update_one(
+            {"_id": user_id},
+            {"$set": {"kills_today": 0, "robs_today": 0, "last_limit_reset": now}}
+        )
+        user['kills_today'] = 0
+        user['robs_today'] = 0
+        user['last_limit_reset'] = now
+
+    # 1. AUTO-REVIVE LOGIC (config-driven hours)
     if user['status'] == 'dead' and user.get('death_time', 0) > 0:
-        if (now - user['death_time']) > 21600:
+        if (now - user['death_time']) > (AUTO_REVIVE_HOURS * 3600):
             # Revive with random balance < 200
             new_bal = random.randint(10, 199)
             await users_col.update_one(
@@ -161,7 +179,7 @@ async def daily(client: Client, message: Message):
     user = await get_user(message.from_user.id, message.from_user.first_name)
     now = time.time()
     if now - user['last_daily'] < 86400: return await message.reply_text("⏳ Please wait 24 hours!")
-    reward = 2000 if user['premium'] else 1000
+    reward = DAILY_BONUS * 2 if user['premium'] else DAILY_BONUS
     await update_user(user['_id'], {"balance": user['balance'] + reward, "last_daily": now})
     await message.reply_text(f"✅ Received ${reward}!")
 
@@ -197,7 +215,12 @@ async def rob(client: Client, message: Message):
     if victim['status'] == "dead": return await message.reply_text("They are dead ☠️ (Wait for revive)")
     if time.time() < victim['protected_until']: return await message.reply_text("🛡️ Protected!")
 
+    # Daily rob limit (config-driven)
+    if robber.get('robs_today', 0) >= ROB_LIMIT_DAILY:
+        return await message.reply_text(f"⚠️ Daily rob limit reached ({ROB_LIMIT_DAILY}/day). Try tomorrow!")
+
     limit = 100000 if robber['premium'] else 10000
+    limit = min(limit, ROB_MAX_AMOUNT)  # hard cap from config
     try: amt = int(message.command[1])
     except: amt = random.randint(100, limit)
     
@@ -207,11 +230,11 @@ async def rob(client: Client, message: Message):
     
     if random.choice([True, False]):
         await update_user(victim['_id'], {"balance": victim['balance'] - amt})
-        await update_user(robber['_id'], {"balance": robber['balance'] + amt})
+        await update_user(robber['_id'], {"balance": robber['balance'] + amt, "robs_today": robber.get('robs_today', 0) + 1})
         await message.reply_text(f"💸 Stole **${amt}**!")
     else:
         fine = 500
-        await update_user(robber['_id'], {"balance": robber['balance'] - fine})
+        await update_user(robber['_id'], {"balance": robber['balance'] - fine, "robs_today": robber.get('robs_today', 0) + 1})
         await message.reply_text(f"🚔 Caught! Fined ${fine}.")
 
 @Client.on_message(filters.command("kill"))
@@ -234,7 +257,16 @@ async def kill(client: Client, message: Message):
         
     if time.time() < victim['protected_until']: 
         return await message.reply_text("🛡️ Protected!")
-    
+
+    # Spam cooldown (config-driven)
+    now_ts = time.time()
+    if now_ts - killer.get('last_kill_time', 0) < KILL_SPAM_COOLDOWN:
+        return await message.reply_text(f"⏳ Slow down! Wait {KILL_SPAM_COOLDOWN}s between kills.")
+
+    # Daily kill limit (config-driven)
+    if killer.get('kills_today', 0) >= KILL_LIMIT_DAILY:
+        return await message.reply_text(f"⚠️ Daily kill limit reached ({KILL_LIMIT_DAILY}/day). Try tomorrow!")
+
     # Random Reward Logic ($100 - $200)
     reward = random.randint(100, 200)
     
@@ -248,6 +280,8 @@ async def kill(client: Client, message: Message):
     # Reward Killer
     await update_user(killer['_id'], {
         "kills": killer['kills'] + 1,
+        "kills_today": killer.get('kills_today', 0) + 1,
+        "last_kill_time": now_ts,
         "balance": killer['balance'] + reward
     })
     
@@ -272,11 +306,11 @@ async def revive(client: Client, message: Message):
     if t_data['status'] == "alive":
         return await message.reply_text(f"✅ {target_user.mention} is already alive!")
         
-    if p_data['balance'] < 500:
-        return await message.reply_text(f"❌ You need 500 coins to revive someone!")
+    if p_data['balance'] < REVIVE_COST:
+        return await message.reply_text(f"❌ You need {REVIVE_COST} coins to revive someone!")
 
     # Deduct Cost
-    await update_user(p_data['_id'], {"balance": p_data['balance'] - 500})
+    await update_user(p_data['_id'], {"balance": p_data['balance'] - REVIVE_COST})
     
     # Revive with Random Balance < 200
     revive_bal = random.randint(10, 199)
@@ -299,8 +333,10 @@ async def protect(client: Client, message: Message):
     user = await get_user(message.from_user.id)
     if days > 1 and not user.get('premium', False):
         return await message.reply_text("❌ 2d and 3d protection is for Premium Users only!")
-        
-    cost = 2000 * days
+
+    # Config-driven cost (3d falls back to 2d rate + 1 day of 1d rate)
+    cost_map = {1: PROTECT_1D_COST, 2: PROTECT_2D_COST, 3: PROTECT_2D_COST + PROTECT_1D_COST}
+    cost = cost_map[days]
     if user['balance'] < cost: return await message.reply_text(f"❌ Low Balance. You need ${cost}")
     
     new_expiry = time.time() + (86400 * days)
