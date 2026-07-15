@@ -115,18 +115,6 @@ def _download_media_bytes(url: str, kind: str, valid_exts, default_ext: str, ret
     return None
 
 
-def _fetch_reaction_gif_sync(reaction: str):
-    """Blocking call, run in a thread. Downloads the gif bytes ourselves and
-    returns them (instead of just the URL), because Telegram's own server-side
-    fetcher sometimes fails/times out on external URLs and shows a blank
-    media box. Returns a BytesIO object ready to upload, or None on failure."""
-    gif_url = _get_gif_url_sync(reaction)
-    if not gif_url:
-        return None
-
-    return _download_media_bytes(gif_url, "reaction", ("gif", "mp4", "webp", "webm"), "gif")
-
-
 # --- ITEM SHOP DATA ---
 SHOP_ITEMS = {
     "rose": {"name": "Rose", "emoji": "🌹", "cost": 500},
@@ -619,20 +607,6 @@ async def actions(client: Client, message: Message):
     act = message.command[0]
     emojis = {"slap": "👋", "punch": "👊", "bite": "🦷", "kiss": "💋", "hug": "🤗"}
     caption = f"{message.from_user.mention} **{act}ed** {message.reply_to_message.from_user.mention} {emojis.get(act, '')}!"
-
-    # Fetch a matching anime reaction GIF (non-blocking, downloaded as bytes
-    # so Telegram doesn't have to fetch the URL itself)
-    loop = asyncio.get_running_loop()
-    gif_file = await loop.run_in_executor(None, _fetch_reaction_gif_sync, act)
-
-    if gif_file:
-        try:
-            await message.reply_animation(animation=gif_file, caption=caption)
-            return
-        except Exception as e:
-            print(f"⚠️ Failed to send action gif, falling back to text: {e}")
-
-    # Fallback: text-only if the gif fetch/send failed
     await message.reply_text(caption)
 
 @Client.on_message(filters.command(["truth", "dare", "puzzle"]))
