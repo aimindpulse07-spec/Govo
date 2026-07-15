@@ -3,6 +3,7 @@ import io
 import asyncio
 import urllib.parse
 
+import requests
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
@@ -17,6 +18,17 @@ except ImportError:
 MODEL = "flux-anime"
 
 
+def _download_image_sync(url: str, timeout: int = 90) -> io.BytesIO:
+    """Blocking download, run in a thread. Pollinations can take 10-60s to render,
+    so we use a generous timeout instead of letting Telegram fetch the URL itself
+    (Telegram's own fetch times out much faster and fails silently)."""
+    resp = requests.get(url, timeout=timeout)
+    resp.raise_for_status()
+    bio = io.BytesIO(resp.content)
+    bio.name = "art.jpg"
+    return bio
+
+
 # --- /draw : AI IMAGE GENERATION ---
 @Client.on_message(filters.command("draw"))
 async def draw_command(client: Client, message: Message):
@@ -29,7 +41,7 @@ async def draw_command(client: Client, message: Message):
     base_prompt = f"{user_prompt}, anime style, masterpiece, best quality, ultra detailed, 8k, vibrant colors, soft lighting"
     encoded_prompt = urllib.parse.quote(base_prompt)
 
-    status = await message.reply_text("🎨 **Painting...**")
+    status = await message.reply_text("🎨 **Painting... (can take up to a minute)**")
 
     try:
         seed = random.randint(0, 1000000)
@@ -38,15 +50,20 @@ async def draw_command(client: Client, message: Message):
             f"?width=1024&height=1024&seed={seed}&model={MODEL}&nologo=true"
         )
 
+        # Download the image ourselves first (generous timeout), then upload the bytes
+        loop = asyncio.get_running_loop()
+        image_bio = await loop.run_in_executor(None, _download_image_sync, image_url)
+
         await client.send_photo(
             chat_id=message.chat.id,
-            photo=image_url,
+            photo=image_bio,
             caption=f"🖼️ **Art by Baka**\n👤 {message.from_user.mention}\n✨ _{user_prompt}_",
         )
         await status.delete()
 
     except Exception as e:
-        await status.edit_text(f"❌ **Error:** Try again later.\n`{e}`")
+        print(f"⚠️ /draw failed: {e}")
+        await status.edit_text(f"❌ **Failed to generate image.** Try again in a bit.\n`{e}`")
 
 
 # --- /speak : TEXT TO VOICE ---
