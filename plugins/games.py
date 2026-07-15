@@ -620,8 +620,25 @@ async def t_d_p(client: Client, message: Message):
 @Client.on_message(filters.command("couples"))
 async def couples(client: Client, message: Message):
     if message.chat.type == ChatType.PRIVATE: return await message.reply_text("Groups only!")
-    await message.reply_text(f"💘 **Couple of the day:** {message.from_user.mention} ❤️ Baka")
+
+    try:
+        members = []
+        async for m in client.get_chat_members(message.chat.id):
+            if m.user and not m.user.is_bot and not m.user.is_deleted:
+                members.append(m.user)
+    except Exception as e:
+        print(f"⚠️ /couples failed to fetch members: {e}")
+        return await message.reply_text("❌ Couldn't fetch group members. Make sure I'm an admin here!")
+
+    if len(members) < 2:
+        return await message.reply_text("❌ Not enough members in this group to pick a couple!")
+
+    u1, u2 = random.sample(members, 2)
+    await message.reply_text(
+        f"💘 **Couple of the Day:**\n{u1.mention} ❤️ {u2.mention}\n\n✨ Love is in the air!"
+    )
 
 @Client.on_message(filters.command("music"))
 async def music_list(client: Client, message: Message):
     await message.reply_text("🎶 **Music List:**\n1. Starboy\n2. Mockingbird\n3. Bones")
+
