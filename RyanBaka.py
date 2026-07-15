@@ -113,7 +113,10 @@ async def main():
         ("items", "Check all available items"),
         ("gift", "Gift a item"), 
         ("economy", "See all economy commands"),
-        ("logs", "Get System Logs (Owner)")
+        ("logs", "Get System Logs (Owner)"),
+        ("draw", "Generate an AI anime image"),
+        ("speak", "Convert text to voice message"),
+        ("waifu", "Get a random anime waifu")
     ]
     try:
         await app.set_bot_commands([BotCommand(c, d) for c, d in commands])
