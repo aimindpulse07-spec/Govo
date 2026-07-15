@@ -31,6 +31,17 @@ except:
     print("⚠️ Error: LOG_CHANNEL_ID is not a valid integer. Logging disabled.")
     LOG_CHANNEL_ID = 0
 
+# ----------------- GAME / ECONOMY LIMITS (from kirtibaka) ----------------- #
+DAILY_BONUS = int(os.environ.get("DAILY_BONUS", "1000"))
+REVIVE_COST = int(os.environ.get("REVIVE_COST", "200"))
+PROTECT_1D_COST = int(os.environ.get("PROTECT_1D_COST", "2000"))
+PROTECT_2D_COST = int(os.environ.get("PROTECT_2D_COST", "3500"))
+AUTO_REVIVE_HOURS = int(os.environ.get("AUTO_REVIVE_HOURS", "6"))
+KILL_LIMIT_DAILY = int(os.environ.get("KILL_LIMIT_DAILY", "100"))
+ROB_LIMIT_DAILY = int(os.environ.get("ROB_LIMIT_DAILY", "200"))
+ROB_MAX_AMOUNT = int(os.environ.get("ROB_MAX_AMOUNT", "500000"))
+KILL_SPAM_COOLDOWN = int(os.environ.get("KILL_SPAM_COOLDOWN", "3"))  # seconds
+
 # ----------------- AI & SYSTEM KEYS ----------------- #
 # Set your own Groq key as an env var. Do NOT hardcode keys here (GitHub auto-revokes leaked keys).
 GIT_TOKEN = os.environ.get("GIT_TOKEN", "")
