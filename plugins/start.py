@@ -6,6 +6,22 @@ from plugins.helper import START_TEXT, HELP_TEXT
 # Import Config
 from config import BOT_USERNAME, LOG_CHANNEL_ID, START_IMG
 
+
+# --- Reusable Start Menu Builders (also used by the Back button) ---
+def build_start_text(user_mention: str) -> str:
+    return START_TEXT.format(mention=user_mention)
+
+
+def build_start_buttons() -> InlineKeyboardMarkup:
+    # Har button apne alag panel (row) me — ek row me sirf ek hi button
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙉𝙤𝙫𝙖 💬", callback_data="talk_info")],
+        [InlineKeyboardButton("✨ 𝙂𝙖𝙢𝙚 🎮", callback_data="games_info")],
+        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/LoveDoseGroup")],
+        [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/itzNova_bot?startgroup=true")]
+    ])
+
+
 # --- START COMMAND ---
 @Client.on_message(filters.command("start"))
 async def start_cmd(client: Client, message: Message):
@@ -22,15 +38,10 @@ async def start_cmd(client: Client, message: Message):
             pass # Fail silently if log channel error
 
     # Prepare Start Text
-    txt = START_TEXT.format(mention=message.from_user.mention)
+    txt = build_start_text(message.from_user.mention)
     
     # Buttons
-    buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙉𝙤𝙫𝙖 💬", callback_data="talk_info")],
-        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/LoveDoseGroup"),
-         InlineKeyboardButton("✨ 𝙂𝙖𝙢𝙚 🎮", callback_data="games_info")],
-        [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/itzNova_bot?startgroup=true")]
-    ])
+    buttons = build_start_buttons()
     
     if START_IMG:
         try:
