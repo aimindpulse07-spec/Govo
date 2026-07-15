@@ -27,13 +27,24 @@ chats_col = db.chats
 # --- TRANSLATOR INIT ---
 trans = Translator()
 
-# --- ANIME REACTION GIF API (free, no key needed) ---
-REACTION_GIF_API = "https://api.otakugifs.xyz/gif?reaction={}"
+# --- ANIME REACTION GIF API (waifu.pics - same as kirtibaka, free, no key needed) ---
+API_URL = "https://api.waifu.pics"
+
+# waifu.pics has no "punch" endpoint (kirtibaka's SFW_ACTIONS list doesn't include it either),
+# so we map our /punch command to the closest supported action.
+ACTION_ENDPOINT_MAP = {
+    "slap": "slap",
+    "punch": "bonk",
+    "bite": "bite",
+    "kiss": "kiss",
+    "hug": "hug",
+}
 
 def _fetch_reaction_gif_sync(reaction: str):
     """Blocking call, run in a thread. Returns a gif URL or None on failure."""
+    endpoint = ACTION_ENDPOINT_MAP.get(reaction, reaction)
     try:
-        r = requests.get(REACTION_GIF_API.format(reaction), timeout=10)
+        r = requests.get(f"{API_URL}/sfw/{endpoint}", timeout=10)
         r.raise_for_status()
         return r.json().get("url")
     except Exception as e:
@@ -506,6 +517,21 @@ async def fun_meters(client: Client, message: Message):
     p = random.randint(0, 100)
     cmd = message.command[0]
     await message.reply_text(f"📊 **{cmd.title()} Level:** {p}%")
+
+def _fetch_waifu_photo_sync():
+    r = requests.get(f"{API_URL}/sfw/waifu", timeout=10)
+    r.raise_for_status()
+    return r.json()["url"]
+
+@Client.on_message(filters.command("waifu"))
+async def waifu_cmd(client: Client, message: Message):
+    try:
+        loop = asyncio.get_running_loop()
+        url = await loop.run_in_executor(None, _fetch_waifu_photo_sync)
+        await message.reply_photo(photo=url, caption="🌸 **Your Random Waifu**")
+    except Exception as e:
+        print(f"⚠️ /waifu failed: {e}")
+        await message.reply_text("❌ Connection error! Try again.")
 
 @Client.on_message(filters.command(["slap", "punch", "bite", "kiss", "hug"]))
 async def actions(client: Client, message: Message):
