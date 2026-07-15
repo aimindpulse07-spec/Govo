@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from pyrogram.enums import ChatType
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, User
+from pyrogram.enums import ChatType, ParseMode
 # Import Texts
 from plugins.helper import START_TEXT, HELP_TEXT
 # Import Config
@@ -8,16 +8,19 @@ from config import BOT_USERNAME, LOG_CHANNEL_ID, START_IMG
 
 
 # --- Reusable Start Menu Builders (also used by the Back button) ---
-def build_start_text(user_mention: str) -> str:
-    return START_TEXT.format(mention=user_mention)
+def build_start_text(user: User) -> str:
+    # HTML-style mention (matches the parse_mode used to send this text,
+    # so the custom emoji tag in START_TEXT renders correctly)
+    mention_html = f'<a href="tg://user?id={user.id}">{user.first_name}</a>'
+    return START_TEXT.format(mention=mention_html)
 
 
 def build_start_buttons() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙈𝙚𝙤𝙬 💬" callback_data="talk_info")],
-        [InlineKeyboardButton("✨ 𝙂𝙧𝙤𝙪𝙥 🧸", url="https://t.me/Aurosupport"),
+        [InlineKeyboardButton("✨ 𝙏𝙖𝙡𝙠 𝙩𝙤 𝙉𝙤𝙫𝙖 💬", callback_data="talk_info")],
+        [InlineKeyboardButton("✨ 𝙁𝙧𝙞𝙚𝙣𝙙𝙨 🧸", url="https://t.me/LoveDoseGroup"),
          InlineKeyboardButton("✨ 𝙂𝙖𝙢𝙚 🎮", callback_data="games_info")],
-        [InlineKeyboardButton("➕ 𝘼𝙙𝙙 𝙢𝙚 𝙩𝙤 𝙮𝙤𝙪𝙧 𝙜𝙧𝙤𝙪𝙥 👥", url=f"https://t.me/itzMeow_bot?startgroup=true")]
+        [InlineKeyboardButton("➕ Add me to your group 👥", url=f"https://t.me/itzNova_bot?startgroup=true")]
     ])
 
 
@@ -37,19 +40,19 @@ async def start_cmd(client: Client, message: Message):
             pass # Fail silently if log channel error
 
     # Prepare Start Text
-    txt = build_start_text(message.from_user.mention)
+    txt = build_start_text(message.from_user)
     
     # Buttons
     buttons = build_start_buttons()
     
     if START_IMG:
         try:
-            await message.reply_photo(photo=START_IMG, caption=txt, reply_markup=buttons)
+            await message.reply_photo(photo=START_IMG, caption=txt, reply_markup=buttons, parse_mode=ParseMode.HTML)
             return
         except Exception as e:
             print(f"⚠️ START_IMG failed, falling back to text: {e}")
 
-    await message.reply_text(text=txt, reply_markup=buttons)
+    await message.reply_text(text=txt, reply_markup=buttons, parse_mode=ParseMode.HTML)
 
 # --- HELP COMMAND ---
 @Client.on_message(filters.command("help"))
@@ -91,7 +94,7 @@ async def bot_added_to_group(client: Client, message: Message):
             f"Use /help to see what I can do!"
         )
         buttons = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzMeow_bot?startgroup=true")]
+            [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzNova_bot?startgroup=true")]
         ])
         if START_IMG:
             try:
@@ -152,3 +155,33 @@ async def id_cmd(client: Client, message: Message):
     else:
         chat_id = message.chat.id
         await message.reply_text(f"🆔 **Chat ID:** `{chat_id}`")
+
+
+# --- GET PREMIUM EMOJI ID (utility, reply to a message containing custom/premium emoji) ---
+@Client.on_message(filters.command("getemoji"))
+async def get_emoji_id_cmd(client: Client, message: Message):
+    target = message.reply_to_message
+    if not target:
+        return await message.reply_text(
+            "❌ Reply to a message that contains the premium emoji(s) you want, then send /getemoji"
+        )
+
+    from pyrogram.enums import MessageEntityType
+
+    entities = (target.entities or []) + (target.caption_entities or [])
+    found = [e for e in entities if e.type == MessageEntityType.CUSTOM_EMOJI]
+
+    if not found:
+        return await message.reply_text(
+            "❌ No premium/custom emoji found in that message.\n"
+            "Note: you must send the emoji yourself (as a Premium user) or forward it — "
+            "regular emoji picker emoji won't count."
+        )
+
+    text = target.text or target.caption or ""
+    lines = ["✅ **Found Premium Emoji ID(s):**\n"]
+    for e in found:
+        emoji_char = text[e.offset: e.offset + e.length]
+        lines.append(f"`{e.custom_emoji_id}` → {emoji_char}")
+
+    await message.reply_text("\n".join(lines))
