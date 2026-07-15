@@ -1,6 +1,8 @@
+import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, User
 from pyrogram.enums import ChatType, ParseMode
+from pyrogram.errors import SlowmodeWait, FloodWait
 # Import Texts
 from plugins.helper import START_TEXT, HELP_TEXT
 # Import Config
@@ -87,25 +89,41 @@ async def bot_added_to_group(client: Client, message: Message):
         group_link = None
 
     # 1. Send Welcome Message in the Group (with image)
-    try:
-        welcome_text = (
-            f"👋 **Hello everyone!**\n"
-            f"Thanks **{added_by}** for adding me to **{message.chat.title}** 💖\n\n"
-            f"Use /help to see what I can do!"
-        )
-        buttons = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzNova_bot?startgroup=true")]
-        ])
-        if START_IMG:
-            try:
-                await message.reply_photo(photo=START_IMG, caption=welcome_text, reply_markup=buttons)
-            except Exception as e:
-                print(f"⚠️ START_IMG failed in welcome message, falling back to text: {e}")
+    welcome_text = (
+        f"👋 **Hello everyone!**\n"
+        f"Thanks **{added_by}** for adding me to **{message.chat.title}** 💖\n\n"
+        f"Use /help to see what I can do!"
+    )
+    buttons = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✨ Add me to another group 👥", url="https://t.me/itzNova_bot?startgroup=true")]
+    ])
+
+    async def send_welcome():
+        """Send welcome message, retrying once if slowmode/flood wait hits."""
+        try:
+            if START_IMG:
+                try:
+                    await message.reply_photo(photo=START_IMG, caption=welcome_text, reply_markup=buttons)
+                except (SlowmodeWait, FloodWait) as e:
+                    print(f"⏳ Slowmode/Flood hit on photo welcome, waiting {e.value}s...")
+                    await asyncio.sleep(e.value)
+                    await message.reply_photo(photo=START_IMG, caption=welcome_text, reply_markup=buttons)
+                except Exception as e:
+                    print(f"⚠️ START_IMG failed in welcome message, falling back to text: {e}")
+                    await message.reply_text(text=welcome_text, reply_markup=buttons)
+            else:
                 await message.reply_text(text=welcome_text, reply_markup=buttons)
-        else:
-            await message.reply_text(text=welcome_text, reply_markup=buttons)
-    except Exception as e:
-        print(f"⚠️ Failed to send group welcome message: {e}")
+        except (SlowmodeWait, FloodWait) as e:
+            print(f"⏳ Slowmode/Flood hit on text welcome, waiting {e.value}s...")
+            await asyncio.sleep(e.value)
+            try:
+                await message.reply_text(text=welcome_text, reply_markup=buttons)
+            except Exception as e2:
+                print(f"⚠️ Failed to send group welcome message after retry: {e2}")
+        except Exception as e:
+            print(f"⚠️ Failed to send group welcome message: {e}")
+
+    await send_welcome()
 
     # 2. Send Log to Logger Channel (with group link)
     if LOG_CHANNEL_ID:
