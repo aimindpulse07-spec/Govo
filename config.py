@@ -13,7 +13,7 @@ SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
 # ----------------- START MESSAGE IMAGE ----------------- #
 # Direct image URL (jpg/png) shown with the /start welcome message. Leave empty for text-only.
-START_IMG = os.environ.get("START_IMG", "https://graph.org/file/2eb14c9f89e216976ab64-9b85ce80b1240c7bd3.jpg")
+START_IMG = os.environ.get("START_IMG", "https://graph.org/file/cd8212bd64abfeb4e3c2f-ef336b1b56486f4c1d.jpg")
 
 # ----------------- OWNER & ADMIN ----------------- #
 try:
