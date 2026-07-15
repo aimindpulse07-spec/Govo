@@ -30,6 +30,9 @@ trans = Translator()
 
 # --- ANIME REACTION GIF API (waifu.pics - same as kirtibaka, free, no key needed) ---
 API_URL = "https://api.waifu.pics"
+# Older route that still works — used as a fallback if the primary host has a
+# transient DNS/connection hiccup (seen on some Heroku dynos).
+ALT_API_URL = "https://waifu.pics/api"
 
 # waifu.pics has no "punch" endpoint (kirtibaka's SFW_ACTIONS list doesn't include it either),
 # so we map our /punch command to the closest supported action.
@@ -41,33 +44,78 @@ ACTION_ENDPOINT_MAP = {
     "hug": "hug",
 }
 
+# Many CDNs (including the one waifu.pics images are hosted on) silently
+# reject/slow-walk requests that send the default "python-requests/x.x"
+# User-Agent, which is what was likely causing slap/bite/kiss/hug to fail
+# while bonk (mapped from /punch) happened to get lucky.
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    )
+}
+
+
+def _get_gif_url_sync(endpoint: str, retries: int = 3, delay_seconds: float = 1.5):
+    """Ask waifu.pics for an image URL for the given endpoint. Retries with a
+    short delay (helps with transient DNS blips) and falls back to the older
+    API host if the primary one keeps failing to resolve/connect."""
+    hosts = [API_URL, ALT_API_URL]
+    last_err = None
+    for attempt in range(1, retries + 1):
+        host = hosts[0] if attempt <= retries // 2 + 1 else hosts[1]
+        try:
+            r = requests.get(f"{host}/sfw/{endpoint}", headers=_HEADERS, timeout=10)
+            r.raise_for_status()
+            url = r.json().get("url")
+            if url:
+                return url
+            last_err = ValueError("empty url in response")
+        except Exception as e:
+            last_err = e
+            print(f"⚠️ Attempt {attempt}/{retries} failed to get gif URL for '{endpoint}' via {host}: {e}")
+        if attempt < retries:
+            time.sleep(delay_seconds)
+    print(f"⚠️ Giving up on gif URL for '{endpoint}' after {retries} attempts: {last_err}")
+    return None
+
+
+def _download_media_bytes(url: str, kind: str, valid_exts, default_ext: str, retries: int = 2, delay_seconds: float = 1.5):
+    """Shared helper: fetch a media URL into a BytesIO, retrying on failure."""
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            media = requests.get(url, headers=_HEADERS, timeout=20)
+            media.raise_for_status()
+            if not media.content:
+                raise ValueError("empty response body")
+
+            file_obj = BytesIO(media.content)
+            ext = url.split(".")[-1].split("?")[0].lower()
+            if ext not in valid_exts:
+                ext = default_ext
+            file_obj.name = f"{kind}.{ext}"
+            return file_obj
+        except Exception as e:
+            last_err = e
+            print(f"⚠️ Attempt {attempt}/{retries} failed to download {kind} from {url}: {e}")
+        if attempt < retries:
+            time.sleep(delay_seconds)
+    print(f"⚠️ Giving up on {kind} download after {retries} attempts: {last_err}")
+    return None
+
+
 def _fetch_reaction_gif_sync(reaction: str):
     """Blocking call, run in a thread. Downloads the gif bytes ourselves and
     returns them (instead of just the URL), because Telegram's own server-side
     fetcher sometimes fails/times out on waifu.pics URLs and shows a blank
     media box. Returns a BytesIO object ready to upload, or None on failure."""
     endpoint = ACTION_ENDPOINT_MAP.get(reaction, reaction)
-    try:
-        r = requests.get(f"{API_URL}/sfw/{endpoint}", timeout=10)
-        r.raise_for_status()
-        gif_url = r.json().get("url")
-        if not gif_url:
-            return None
-
-        # Download the actual media bytes so we upload the file directly
-        media = requests.get(gif_url, timeout=15)
-        media.raise_for_status()
-
-        file_obj = BytesIO(media.content)
-        # Pyrogram needs a "name" so it uploads with the right extension/mimetype
-        ext = gif_url.split(".")[-1].split("?")[0].lower()
-        if ext not in ("gif", "mp4", "webp", "webm"):
-            ext = "gif"
-        file_obj.name = f"reaction.{ext}"
-        return file_obj
-    except Exception as e:
-        print(f"⚠️ Failed to fetch reaction gif for '{reaction}': {e}")
+    gif_url = _get_gif_url_sync(endpoint)
+    if not gif_url:
         return None
+
+    return _download_media_bytes(gif_url, "reaction", ("gif", "mp4", "webp", "webm"), "gif")
 
 
 # --- ITEM SHOP DATA ---
@@ -537,18 +585,13 @@ async def fun_meters(client: Client, message: Message):
     await message.reply_text(f"📊 **{cmd.title()} Level:** {p}%")
 
 def _fetch_waifu_photo_sync():
-    r = requests.get(f"{API_URL}/sfw/waifu", timeout=10)
-    r.raise_for_status()
-    photo_url = r.json()["url"]
+    photo_url = _get_gif_url_sync("waifu")
+    if not photo_url:
+        raise ValueError("failed to get waifu image url after retries")
 
-    media = requests.get(photo_url, timeout=15)
-    media.raise_for_status()
-
-    file_obj = BytesIO(media.content)
-    ext = photo_url.split(".")[-1].split("?")[0].lower()
-    if ext not in ("jpg", "jpeg", "png", "webp"):
-        ext = "jpg"
-    file_obj.name = f"waifu.{ext}"
+    file_obj = _download_media_bytes(photo_url, "waifu", ("jpg", "jpeg", "png", "webp"), "jpg")
+    if not file_obj:
+        raise ValueError("failed to download waifu image after retries")
     return file_obj
 
 @Client.on_message(filters.command("waifu"))
