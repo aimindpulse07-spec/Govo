@@ -93,17 +93,8 @@ async def chat_handler(client, message):
         and message.reply_to_message.from_user.id == client.me.id
     )
 
-    triggers = ["hi", "hii", "hello", "meow", "baby", "hey", "hlo"]
-    
-    text_lower = message.text.lower().strip()
-    
-    first_word = text_lower.split()[0] if text_lower else ""
-    
-    first_word = first_word.strip(".,!?")
-
-    is_trigger = first_word in triggers
-
-    if is_private or is_mentioned or is_reply or is_trigger:
+    # Bot ab har message par reply karega — group ho ya private, tag ki zaroorat nahi
+    if True:
         try:
             await client.send_chat_action(message.chat.id, ChatAction.TYPING)
 
