@@ -1,6 +1,8 @@
 import asyncio
+import time
 import requests
 import base64
+from collections import defaultdict, deque
 from pyrogram import Client, filters
 from pyrogram.enums import ChatType, ChatAction
 from config import GIT_TOKEN
@@ -16,7 +18,23 @@ _E_MODELS = [
     "bGxhbWEtMy4xLThiLWluc3RhbnQ="
 ]
 
-def ai_groq_engine(text):
+# --- Simple in-memory conversation history (per chat) ---
+# Keeps last N exchanges so replies feel connected, like a real chat.
+# Note: this resets if the bot restarts (in-memory only, not a DB).
+_HISTORY = defaultdict(lambda: deque(maxlen=6))  # 6 messages = ~3 user+bot turns
+_HISTORY_TTL = 60 * 30  # forget context after 30 min of silence in that chat
+_LAST_SEEN = {}
+
+
+def _get_history(chat_id):
+    now = time.time()
+    if now - _LAST_SEEN.get(chat_id, 0) > _HISTORY_TTL:
+        _HISTORY[chat_id].clear()
+    _LAST_SEEN[chat_id] = now
+    return _HISTORY[chat_id]
+
+
+def ai_groq_engine(text, chat_id=None):
     if not GIT_TOKEN:
         print("⚠️(GIT_TOKEN) Missing.")
         return None
@@ -46,24 +64,43 @@ def ai_groq_engine(text):
                     "no formal grammar, no long explanations. "
                     "Match the energy of what's said to you: if it's a plain 'hello' or 'hi', give a short casual greeting back like a person would — "
                     "not a scripted intro, not the same line every time. "
-                    "Keep replies short and human — usually 1 sentence, rarely 2. Use at most one emoji, and only sometimes, not every message. "
+                    "Remember what was said earlier in this chat and stay consistent with it — don't contradict yourself or repeat the same line twice. "
+                    "IMPORTANT: If the user asks a real question — facts, information, advice, math, how something works, current things, anything where "
+                    "a wrong answer would actually mislead them — give the CORRECT and ACCURATE answer first, still in your casual girl tone, don't dodge it "
+                    "or make something up just to sound cute. Being sassy never means being wrong. "
+                    "For genuine questions you can go slightly longer (2-3 short sentences) if needed to actually answer properly. "
+                    "For plain chit-chat (greetings, teasing, small talk) keep it short — usually 1 sentence, rarely 2. "
+                    "Use at most one emoji, and only sometimes, not every message. "
                     "Don't over-explain, don't be robotic or repetitive, don't sound like a customer support message."
                 )
 
+                messages = [{"role": "system", "content": sys_prompt}]
+
+                # Add recent conversation history for context/continuity
+                if chat_id is not None:
+                    messages.extend(list(_get_history(chat_id)))
+
+                messages.append({"role": "user", "content": text})
+
                 payload = {
-                    "messages": [
-                        {"role": "system", "content": sys_prompt}, 
-                        {"role": "user", "content": text}
-                    ], 
-                    "model": target_model, 
-                    "temperature": 0.9, 
-                    "max_tokens": 120
+                    "messages": messages,
+                    "model": target_model,
+                    "temperature": 0.9,
+                    "max_tokens": 200
                 }
 
                 res = requests.post(target_url, headers=headers, json=payload, timeout=8)
 
                 if res.status_code == 200:
-                    return res.json()["choices"][0]["message"]["content"]
+                    reply = res.json()["choices"][0]["message"]["content"]
+
+                    # Save this exchange into history for future context
+                    if chat_id is not None:
+                        hist = _get_history(chat_id)
+                        hist.append({"role": "user", "content": text})
+                        hist.append({"role": "assistant", "content": reply})
+
+                    return reply
                 else:
                     # If model is overloaded (503/429), loop continues to next model
                     print(f"Model {target_model} busy ({res.status_code}). Switching...")
@@ -93,12 +130,21 @@ async def chat_handler(client, message):
         and message.reply_to_message.from_user.id == client.me.id
     )
 
-    # Bot ab har message par reply karega — group ho ya private, tag ki zaroorat nahi
-    if True:
+    triggers = ["hi", "hii", "hello", "meow", "baby", "hey", "hlo"]
+    
+    text_lower = message.text.lower().strip()
+    
+    first_word = text_lower.split()[0] if text_lower else ""
+    
+    first_word = first_word.strip(".,!?")
+
+    is_trigger = first_word in triggers
+
+    if is_private or is_mentioned or is_reply or is_trigger:
         try:
             await client.send_chat_action(message.chat.id, ChatAction.TYPING)
 
-            response = await asyncio.to_thread(ai_groq_engine, message.text)
+            response = await asyncio.to_thread(ai_groq_engine, message.text, message.chat.id)
 
             # Final Error
             if not response:
