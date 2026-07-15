@@ -28,26 +28,11 @@ chats_col = db.chats
 # --- TRANSLATOR INIT ---
 trans = Translator()
 
-# --- ANIME REACTION GIF API (waifu.pics - same as kirtibaka, free, no key needed) ---
-API_URL = "https://api.waifu.pics"
-# Older route that still works — used as a fallback if the primary host has a
-# transient DNS/connection hiccup (seen on some Heroku dynos).
-ALT_API_URL = "https://waifu.pics/api"
-
-# waifu.pics has no "punch" endpoint (kirtibaka's SFW_ACTIONS list doesn't include it either),
-# so we map our /punch command to the closest supported action.
-ACTION_ENDPOINT_MAP = {
-    "slap": "slap",
-    "punch": "bonk",
-    "bite": "bite",
-    "kiss": "kiss",
-    "hug": "hug",
-}
-
-# Many CDNs (including the one waifu.pics images are hosted on) silently
-# reject/slow-walk requests that send the default "python-requests/x.x"
-# User-Agent, which is what was likely causing slap/bite/kiss/hug to fail
-# while bonk (mapped from /punch) happened to get lucky.
+# --- ANIME REACTION GIF SOURCES ---
+# api.waifu.pics was found to consistently fail to resolve on this Heroku
+# dyno's DNS (not transient — every single request failed). nekos.best is
+# used as the primary source since it resolves reliably; waifu.pics hosts
+# are kept as fallbacks in case that changes back.
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -55,28 +40,53 @@ _HEADERS = {
     )
 }
 
+# Each host defines: how to build the request URL for an action, how to map
+# our action names to that host's category names (only where they differ),
+# and how to pull the image/gif url out of that host's JSON shape.
+_GIF_HOSTS = [
+    {
+        "name": "nekos.best",
+        "url": lambda cat: f"https://nekos.best/api/v2/{cat}",
+        "endpoint_map": {},  # nekos.best already uses "slap"/"punch"/"kiss"/"hug"/"bite"/"waifu"
+        "parse": lambda data: ((data.get("results") or [{}])[0]).get("url"),
+    },
+    {
+        "name": "api.waifu.pics",
+        "url": lambda cat: f"https://api.waifu.pics/sfw/{cat}",
+        "endpoint_map": {"punch": "bonk"},  # waifu.pics has no "punch" category
+        "parse": lambda data: data.get("url"),
+    },
+    {
+        "name": "waifu.pics/api (legacy)",
+        "url": lambda cat: f"https://waifu.pics/api/sfw/{cat}",
+        "endpoint_map": {"punch": "bonk"},
+        "parse": lambda data: data.get("url"),
+    },
+]
 
-def _get_gif_url_sync(endpoint: str, retries: int = 3, delay_seconds: float = 1.5):
-    """Ask waifu.pics for an image URL for the given endpoint. Retries with a
-    short delay (helps with transient DNS blips) and falls back to the older
-    API host if the primary one keeps failing to resolve/connect."""
-    hosts = [API_URL, ALT_API_URL]
+
+def _get_gif_url_sync(action: str, retries_per_host: int = 2, delay_seconds: float = 1.0):
+    """Try each host in _GIF_HOSTS in order (with a couple of retries each) and
+    return the first working image/gif URL. Handles hosts having different
+    category names and different JSON response shapes."""
     last_err = None
-    for attempt in range(1, retries + 1):
-        host = hosts[0] if attempt <= retries // 2 + 1 else hosts[1]
-        try:
-            r = requests.get(f"{host}/sfw/{endpoint}", headers=_HEADERS, timeout=10)
-            r.raise_for_status()
-            url = r.json().get("url")
-            if url:
-                return url
-            last_err = ValueError("empty url in response")
-        except Exception as e:
-            last_err = e
-            print(f"⚠️ Attempt {attempt}/{retries} failed to get gif URL for '{endpoint}' via {host}: {e}")
-        if attempt < retries:
-            time.sleep(delay_seconds)
-    print(f"⚠️ Giving up on gif URL for '{endpoint}' after {retries} attempts: {last_err}")
+    for host in _GIF_HOSTS:
+        category = host["endpoint_map"].get(action, action)
+        url = host["url"](category)
+        for attempt in range(1, retries_per_host + 1):
+            try:
+                r = requests.get(url, headers=_HEADERS, timeout=10)
+                r.raise_for_status()
+                gif_url = host["parse"](r.json())
+                if gif_url:
+                    return gif_url
+                last_err = ValueError("empty url in response")
+            except Exception as e:
+                last_err = e
+                print(f"⚠️ Attempt {attempt}/{retries_per_host} failed to get gif URL for '{action}' via {host['name']}: {e}")
+            if attempt < retries_per_host:
+                time.sleep(delay_seconds)
+    print(f"⚠️ Giving up on gif URL for '{action}' after trying all hosts: {last_err}")
     return None
 
 
@@ -108,10 +118,9 @@ def _download_media_bytes(url: str, kind: str, valid_exts, default_ext: str, ret
 def _fetch_reaction_gif_sync(reaction: str):
     """Blocking call, run in a thread. Downloads the gif bytes ourselves and
     returns them (instead of just the URL), because Telegram's own server-side
-    fetcher sometimes fails/times out on waifu.pics URLs and shows a blank
+    fetcher sometimes fails/times out on external URLs and shows a blank
     media box. Returns a BytesIO object ready to upload, or None on failure."""
-    endpoint = ACTION_ENDPOINT_MAP.get(reaction, reaction)
-    gif_url = _get_gif_url_sync(endpoint)
+    gif_url = _get_gif_url_sync(reaction)
     if not gif_url:
         return None
 
