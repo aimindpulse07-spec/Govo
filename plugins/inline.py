@@ -3,9 +3,12 @@ from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBu
 from plugins.helper import ECONOMY_TEXT, TALK_TEXT
 from plugins.start import build_start_text, build_start_buttons
 
-# Back button jo Game aur Talk to Nova dono panels me use hoga
+# Back + Close buttons jo Game aur Talk to Nova dono panels me use honge
 BACK_BUTTON = InlineKeyboardMarkup(
-    [[InlineKeyboardButton("🔙 Back", callback_data="back_to_start")]]
+    [[
+        InlineKeyboardButton("🔙 Back", callback_data="back_to_start"),
+        InlineKeyboardButton("❌ Close", callback_data="close_menu")
+    ]]
 )
 
 
@@ -33,6 +36,13 @@ async def callback_handler(client: Client, query: CallbackQuery):
 
     elif query.data == "back_to_start":
         await query.answer()
-        txt = build_start_text(query.from_user.mention)
+        txt = build_start_text(query.from_user)
         buttons = build_start_buttons()
         await edit_menu(query, txt, buttons)
+
+    elif query.data == "close_menu":
+        await query.answer()
+        try:
+            await query.message.delete()
+        except Exception as e:
+            print(f"⚠️ Failed to close menu: {e}")
