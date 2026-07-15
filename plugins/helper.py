@@ -2,7 +2,7 @@
 
 START_TEXT = (
     "✨ 𝐇𝐞𝐲 {mention} ~\n"
-    "𖦹 Yᴏᴜ Aʀᴇ Tᴀʟᴋɪɴɢ Tᴏ Nova, A Gᴀᴍɪɴɢ Aɴᴅ Cʜᴀᴛᴛɪɴɢ Gɪʀʟ Hᴀᴠɪɴɢ Lᴏᴛꜱ Oꜰ Fᴇᴀᴛᴜʀᴇꜱ.\n\n"
+    "𖦹 Yᴏᴜ Aʀᴇ Tᴀʟᴋɪɴɢ Tᴏ 𝖬𝖾𝗈𝗐, A Gᴀᴍɪɴɢ Aɴᴅ Cʜᴀᴛᴛɪɴɢ Gɪʀʟ Hᴀᴠɪɴɢ Lᴏᴛꜱ Oꜰ Fᴇᴀᴛᴜʀᴇꜱ.\n\n"
     "𖥔 Cʜᴏᴏsᴇ Aɴ Oᴘᴛɪᴏɴ Bᴇʟᴏᴡ :"
 )
 
@@ -27,11 +27,11 @@ HELP_TEXT = (
 TALK_TEXT = (
     "💬 **How to talk to me:**\n\n"
     "Just send me a message in PM, or tag me in a group!\n"
-    "Example: `Nova how are you?`"
+    "Example: `Meow how are you?`"
 )
 
 ECONOMY_TEXT = (
-    "💰 **Nova Economy System Guide**\n\n"
+    "💰 **Meow Economy System Guide**\n\n"
     "🔹 **Normal Users (👤):**\n"
     "/daily, /claim, /bal, /rob, /kill, /revive, /protect, /give\n"
     "/items, /gift, /toprich, /topkill\n\n"
