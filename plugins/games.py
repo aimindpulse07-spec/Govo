@@ -2,6 +2,7 @@ import time
 import random
 import asyncio
 import requests
+from io import BytesIO
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
 from pyrogram import Client, filters
@@ -41,12 +42,29 @@ ACTION_ENDPOINT_MAP = {
 }
 
 def _fetch_reaction_gif_sync(reaction: str):
-    """Blocking call, run in a thread. Returns a gif URL or None on failure."""
+    """Blocking call, run in a thread. Downloads the gif bytes ourselves and
+    returns them (instead of just the URL), because Telegram's own server-side
+    fetcher sometimes fails/times out on waifu.pics URLs and shows a blank
+    media box. Returns a BytesIO object ready to upload, or None on failure."""
     endpoint = ACTION_ENDPOINT_MAP.get(reaction, reaction)
     try:
         r = requests.get(f"{API_URL}/sfw/{endpoint}", timeout=10)
         r.raise_for_status()
-        return r.json().get("url")
+        gif_url = r.json().get("url")
+        if not gif_url:
+            return None
+
+        # Download the actual media bytes so we upload the file directly
+        media = requests.get(gif_url, timeout=15)
+        media.raise_for_status()
+
+        file_obj = BytesIO(media.content)
+        # Pyrogram needs a "name" so it uploads with the right extension/mimetype
+        ext = gif_url.split(".")[-1].split("?")[0].lower()
+        if ext not in ("gif", "mp4", "webp", "webm"):
+            ext = "gif"
+        file_obj.name = f"reaction.{ext}"
+        return file_obj
     except Exception as e:
         print(f"⚠️ Failed to fetch reaction gif for '{reaction}': {e}")
         return None
@@ -521,14 +539,24 @@ async def fun_meters(client: Client, message: Message):
 def _fetch_waifu_photo_sync():
     r = requests.get(f"{API_URL}/sfw/waifu", timeout=10)
     r.raise_for_status()
-    return r.json()["url"]
+    photo_url = r.json()["url"]
+
+    media = requests.get(photo_url, timeout=15)
+    media.raise_for_status()
+
+    file_obj = BytesIO(media.content)
+    ext = photo_url.split(".")[-1].split("?")[0].lower()
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "jpg"
+    file_obj.name = f"waifu.{ext}"
+    return file_obj
 
 @Client.on_message(filters.command("waifu"))
 async def waifu_cmd(client: Client, message: Message):
     try:
         loop = asyncio.get_running_loop()
-        url = await loop.run_in_executor(None, _fetch_waifu_photo_sync)
-        await message.reply_photo(photo=url, caption="🌸 **Your Random Waifu**")
+        photo_file = await loop.run_in_executor(None, _fetch_waifu_photo_sync)
+        await message.reply_photo(photo=photo_file, caption="🌸 **Your Random Waifu**")
     except Exception as e:
         print(f"⚠️ /waifu failed: {e}")
         await message.reply_text("❌ Connection error! Try again.")
@@ -540,13 +568,14 @@ async def actions(client: Client, message: Message):
     emojis = {"slap": "👋", "punch": "👊", "bite": "🦷", "kiss": "💋", "hug": "🤗"}
     caption = f"{message.from_user.mention} **{act}ed** {message.reply_to_message.from_user.mention} {emojis.get(act, '')}!"
 
-    # Fetch a matching anime reaction GIF (non-blocking)
+    # Fetch a matching anime reaction GIF (non-blocking, downloaded as bytes
+    # so Telegram doesn't have to fetch the URL itself)
     loop = asyncio.get_running_loop()
-    gif_url = await loop.run_in_executor(None, _fetch_reaction_gif_sync, act)
+    gif_file = await loop.run_in_executor(None, _fetch_reaction_gif_sync, act)
 
-    if gif_url:
+    if gif_file:
         try:
-            await message.reply_animation(animation=gif_url, caption=caption)
+            await message.reply_animation(animation=gif_file, caption=caption)
             return
         except Exception as e:
             print(f"⚠️ Failed to send action gif, falling back to text: {e}")
