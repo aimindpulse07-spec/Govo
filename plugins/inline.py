@@ -6,8 +6,8 @@ from plugins.start import build_start_text, build_start_buttons
 # Back + Close buttons jo Game aur Talk to Nova dono panels me use honge
 BACK_BUTTON = InlineKeyboardMarkup(
     [[
-        InlineKeyboardButton("🔙 Back", callback_data="back_to_start"),
-        InlineKeyboardButton("❌ Close", callback_data="close_menu")
+        InlineKeyboardButton("Bᴀᴄᴋ", callback_data="back_to_start"),
+        InlineKeyboardButton("Cʟᴏsᴇ", callback_data="close_menu")
     ]]
 )
 
