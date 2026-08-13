@@ -11,7 +11,7 @@ def _decrypt(data):
     return base64.b64decode(data).decode("utf-8")
 
 _E_URL = "https://api.groq.com/openai/v1/chat/completions"
-_E_CREATOR = "@MrRockytg"
+_E_CREATOR = "Archon"
 
 # Encrypted Models List (Groq Multi-Model Fallback)
 _E_MODELS = [
@@ -41,7 +41,7 @@ def ai_groq_engine(text, chat_id=None):
 
     try:
         target_url = "https://api.groq.com/openai/v1/chat/completions"
-        owner_tag = "@MrRockytg"
+        owner_tag = "Archon"
 
         headers = {
             "Content-Type": "application/json",
