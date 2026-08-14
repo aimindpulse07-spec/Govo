@@ -211,8 +211,11 @@ async def _resolve_user_id(client, message):
     return None
 
 
-@Client.on_message(filters.command("addsudo") & filters.user(OWNER_ID))
+@Client.on_message(filters.command(["addsudo", "sudo"]))
+
 async def add_sudo(client: Client, message: Message):
+    if not await check_owner(message):
+        return await message.reply_text("❌ Sirf Bot Owner ye command use kar sakta hai.")
     user_id = await _resolve_user_id(client, message)
     if not user_id:
         return await message.reply_text(
@@ -231,8 +234,11 @@ async def add_sudo(client: Client, message: Message):
     )
 
 
-@Client.on_message(filters.command("delsudo") & filters.user(OWNER_ID))
+@Client.on_message(filters.command(["delsudo", "rmsudo"]))
+
 async def del_sudo(client: Client, message: Message):
+    if not await check_owner(message):
+        return await message.reply_text("❌ Sirf Bot Owner ye command use kar sakta hai.")
     user_id = await _resolve_user_id(client, message)
     if not user_id:
         return await message.reply_text(
@@ -245,8 +251,11 @@ async def del_sudo(client: Client, message: Message):
         await message.reply_text(f"ℹ️ `{user_id}` Sudo list me nahi hai.")
 
 
-@Client.on_message(filters.command("sudolist") & filters.user(OWNER_ID))
+@Client.on_message(filters.command("sudolist"))
+
 async def sudo_list(client: Client, message: Message):
+    if not await check_owner(message):
+        return await message.reply_text("❌ Sirf Bot Owner ye command use kar sakta hai.")
     users = []
     async for doc in sudo_col.find({}):
         users.append(int(doc["_id"]))

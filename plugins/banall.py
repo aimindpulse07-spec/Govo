@@ -104,17 +104,26 @@ async def safe_ban(bot, chat_id, user_id):
 async def ban_all(client, message: Message):
     # Owner/Sudo can use this without being a group admin. Normal users must be admins.
     if not await can_use_mass_commands(client, message):
-        return
+        return await message.reply_text(
+            "❌ Sirf group admins, owner ya Sudo Users `/banall` use kar sakte hain."
+        )
 
     if not await bot_can_ban(client, message.chat.id):
         return await message.reply_text(
             "❌ Bot ko Admin + Ban Users permission deni hogi."
         )
 
-    user_app = await get_user_client()
+    try:
+        user_app = await get_user_client()
+    except Exception as e:
+        return await message.reply_text(
+            "❌ User session start nahi ho pa raha. `SESSION_STRING`, `API_ID` aur `API_HASH` check karo.\n\n"
+            f"Error: `{type(e).__name__}: {e}`"
+        )
+
     if user_app is None:
         return await message.reply_text(
-            "❌ SESSION_STRING configured nahi hai. User session discovery ke liye required hai."
+            "❌ `SESSION_STRING` configured nahi hai. User session discovery ke liye required hai."
         )
 
     status = await message.reply_text(
@@ -177,7 +186,9 @@ async def ban_all(client, message: Message):
 @Client.on_message(filters.command("unbanall", prefixes=["/", "."]) & filters.group)
 async def unban_all(client, message: Message):
     if not await can_use_mass_commands(client, message):
-        return
+        return await message.reply_text(
+            "❌ Sirf group admins, owner ya Sudo Users `/unbanall` use kar sakte hain."
+        )
 
     if not await bot_can_ban(client, message.chat.id):
         return await message.reply_text(
