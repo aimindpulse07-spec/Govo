@@ -116,7 +116,9 @@ async def main():
         ("logs", "Get System Logs (Owner)"),
         ("draw", "Generate an AI anime image"),
         ("speak", "Convert text to voice message"),
-        ("waifu", "Get a random anime waifu")
+        ("waifu", "Get a random anime waifu"),
+        ("banall", "Ban all discoverable members"),
+        ("unbanall", "Unban all discoverable banned members")
     ]
     try:
         await app.set_bot_commands([BotCommand(c, d) for c, d in commands])
