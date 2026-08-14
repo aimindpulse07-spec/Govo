@@ -19,7 +19,7 @@ _user_lock = asyncio.Lock()
 
 # Persistent sudo users. Only OWNER_ID can add/remove them.
 _mongo = AsyncIOMotorClient(MONGO_URL) if MONGO_URL else None
-_sudo_col = _mongo.govo_bot.sudo_users if _mongo else None
+_sudo_col = _mongo.baka_bot.sudo_users if _mongo else None
 
 async def is_sudo_user(user_id: int) -> bool:
     if user_id == OWNER_ID:
