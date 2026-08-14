@@ -187,3 +187,72 @@ async def get_logs(client: Client, message: Message):
         
     except Exception as e:
         await msg.edit_text(f"❌ **Exception:** {e}")
+
+# ---------------- BANALL SUDO MANAGEMENT ---------------- #
+# These commands are OWNER-ONLY. Sudo users get mass-command access
+# (/banall and /unbanall) without needing to be group administrators.
+
+sudo_col = db.sudo_users
+
+async def _resolve_user_id(client, message):
+    """Resolve a Telegram user ID from an argument or replied message."""
+    if message.reply_to_message and message.reply_to_message.from_user:
+        return message.reply_to_message.from_user.id
+    if len(message.command) > 1:
+        raw = message.command[1].strip()
+        try:
+            return int(raw)
+        except ValueError:
+            try:
+                user = await client.get_users(raw.lstrip("@"))
+                return user.id
+            except Exception:
+                return None
+    return None
+
+
+@Client.on_message(filters.command("addsudo") & filters.user(OWNER_ID))
+async def add_sudo(client: Client, message: Message):
+    user_id = await _resolve_user_id(client, message)
+    if not user_id:
+        return await message.reply_text(
+            "⚠️ Usage: `/addsudo 123456789` or reply to a user's message."
+        )
+    if user_id == OWNER_ID:
+        return await message.reply_text("👑 Owner already has sudo access.")
+    await sudo_col.update_one(
+        {"_id": int(user_id)},
+        {"$set": {"user_id": int(user_id), "added_by": OWNER_ID}},
+        upsert=True,
+    )
+    await message.reply_text(
+        f"✅ `{user_id}` ko **Sudo User** bana diya gaya.\n\n"
+        "Ab ye user group admin na hote hue bhi `/banall` aur `/unbanall` use kar sakta hai."
+    )
+
+
+@Client.on_message(filters.command("delsudo") & filters.user(OWNER_ID))
+async def del_sudo(client: Client, message: Message):
+    user_id = await _resolve_user_id(client, message)
+    if not user_id:
+        return await message.reply_text(
+            "⚠️ Usage: `/delsudo 123456789` or reply to a user's message."
+        )
+    result = await sudo_col.delete_one({"_id": int(user_id)})
+    if result.deleted_count:
+        await message.reply_text(f"✅ `{user_id}` ka Sudo access remove kar diya gaya.")
+    else:
+        await message.reply_text(f"ℹ️ `{user_id}` Sudo list me nahi hai.")
+
+
+@Client.on_message(filters.command("sudolist") & filters.user(OWNER_ID))
+async def sudo_list(client: Client, message: Message):
+    users = []
+    async for doc in sudo_col.find({}):
+        users.append(int(doc["_id"]))
+    if not users:
+        return await message.reply_text("📋 Abhi koi Sudo User nahi hai.")
+    text = "👑 **Sudo Users:**\n\n" + "\n".join(
+        f"{i}. `{uid}`" for i, uid in enumerate(users, 1)
+    )
+    await message.reply_text(text)
